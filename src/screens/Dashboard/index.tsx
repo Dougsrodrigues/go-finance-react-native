@@ -1,4 +1,6 @@
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { memo, useCallback, useState } from "react";
+import { ActivityIndicator } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { HighlightCard } from "../../components/HighlightCard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -22,24 +24,49 @@ import {
   Title,
   TransactionsList,
   LogoutButton,
+  LoadContainer,
 } from "./styles";
-import { useFocusEffect } from "@react-navigation/native";
+import { useTheme } from "styled-components";
 
 export interface DataListProps extends TransactionCardProps {
-  id: string | number;
+  id: string;
+}
+
+interface HighlightProps {
+  amount: string;
+}
+
+interface HighlightData {
+  entries: HighlightProps;
+  expense: HighlightProps;
+  total: HighlightProps;
 }
 
 export const Dashboard: React.FC = memo(() => {
+  const theme = useTheme();
   const dataKey = "@gofinance:transactions";
-  const [data, setData] = useState<DataListProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [transactions, setTransactions] = useState<DataListProps[]>([]);
+  const [highlightData, setHighlightData] = useState<HighlightData>(
+    {} as HighlightData
+  );
 
   const loadTransactions = async () => {
     const transactions = await AsyncStorage.getItem(dataKey);
+
+    let entiresTotal = 0;
+    let expenseTotal = 0;
 
     const transactionsParse = transactions ? JSON.parse(transactions) : [];
 
     const transactionsFormatted: DataListProps[] = transactionsParse.map(
       (transaction: DataListProps) => {
+        if (transaction.type === "positive") {
+          entiresTotal += Number(transaction.amount);
+        } else {
+          expenseTotal += Number(transaction.amount);
+        }
+
         const amount = Number(transaction.amount).toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL",
@@ -59,13 +86,32 @@ export const Dashboard: React.FC = memo(() => {
       }
     );
 
-    console.log(transactionsFormatted);
-    setData(transactionsFormatted);
-  };
+    const total = entiresTotal - expenseTotal;
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+    setHighlightData({
+      entries: {
+        amount: entiresTotal.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }),
+      },
+      expense: {
+        amount: expenseTotal.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }),
+      },
+      total: {
+        amount: total.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }),
+      },
+    });
+
+    setTransactions(transactionsFormatted);
+    setIsLoading(false);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -75,54 +121,62 @@ export const Dashboard: React.FC = memo(() => {
 
   return (
     <Container>
-      <Header>
-        <UserWrapper>
-          <UserInfo>
-            <Photo
-              source={{
-                uri: "https://avatars.githubusercontent.com/u/41873554?v=4",
-              }}
+      {isLoading ? (
+        <LoadContainer>
+          <ActivityIndicator color={theme.colors.primary} size="large" />
+        </LoadContainer>
+      ) : (
+        <>
+          <Header>
+            <UserWrapper>
+              <UserInfo>
+                <Photo
+                  source={{
+                    uri: "https://avatars.githubusercontent.com/u/41873554?v=4",
+                  }}
+                />
+                <User>
+                  <UserGreeting>Olá, </UserGreeting>
+                  <UserName>Douglas</UserName>
+                </User>
+              </UserInfo>
+              <LogoutButton onPress={() => {}}>
+                <Icon name="power" />
+              </LogoutButton>
+            </UserWrapper>
+          </Header>
+
+          <HighlightCards>
+            <HighlightCard
+              type="up"
+              title="Entradas"
+              amount={highlightData?.entries?.amount}
+              lastTransaction="Última entrada dia 13 de abril"
             />
-            <User>
-              <UserGreeting>Olá, </UserGreeting>
-              <UserName>Douglas</UserName>
-            </User>
-          </UserInfo>
-          <LogoutButton onPress={() => {}}>
-            <Icon name="power" />
-          </LogoutButton>
-        </UserWrapper>
-      </Header>
+            <HighlightCard
+              type="down"
+              title="Saídas"
+              amount={highlightData?.expense?.amount}
+              lastTransaction="Última entrada dia 13 de abril"
+            />
+            <HighlightCard
+              type="total"
+              title="Total"
+              amount={highlightData?.total?.amount}
+              lastTransaction="Última entrada dia 13 de abril"
+            />
+          </HighlightCards>
 
-      <HighlightCards>
-        <HighlightCard
-          type="up"
-          title="Entradas"
-          amount="R$ 12.000,22"
-          lastTransaction="Última entrada dia 13 de abril"
-        />
-        <HighlightCard
-          type="down"
-          title="Saídas"
-          amount="R$ 1.000,22"
-          lastTransaction="Última entrada dia 13 de abril"
-        />
-        <HighlightCard
-          type="total"
-          title="Total"
-          amount="R$ 16.000,22"
-          lastTransaction="Última entrada dia 13 de abril"
-        />
-      </HighlightCards>
-
-      <Transactions>
-        <Title>Listagem</Title>
-        <TransactionsList
-          data={data}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <TransactionCard data={item} />}
-        />
-      </Transactions>
+          <Transactions>
+            <Title>Listagem</Title>
+            <TransactionsList
+              data={transactions}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => <TransactionCard data={item} />}
+            />
+          </Transactions>
+        </>
+      )}
     </Container>
   );
 });
