@@ -34,6 +34,7 @@ export interface DataListProps extends TransactionCardProps {
 
 interface HighlightProps {
   amount: string;
+  lastTransaction: string;
 }
 
 interface HighlightData {
@@ -50,6 +51,27 @@ export const Dashboard: React.FC = memo(() => {
   const [highlightData, setHighlightData] = useState<HighlightData>(
     {} as HighlightData
   );
+
+  const getLastTransactionData = (
+    collection: DataListProps[],
+    type: "positive" | "negative"
+  ) => {
+    const lastTransaction = new Date(
+      Math.max.apply(
+        Math,
+        collection
+          .filter((transaction: DataListProps) => transaction.type === type)
+          .map((transaction: DataListProps) =>
+            new Date(transaction.date).getTime()
+          )
+      )
+    );
+
+    return `${lastTransaction.getDate()} de ${lastTransaction.toLocaleString(
+      "pt-BR",
+      { month: "long" }
+    )}`;
+  };
 
   const loadTransactions = async () => {
     const transactions = await AsyncStorage.getItem(dataKey);
@@ -86,6 +108,16 @@ export const Dashboard: React.FC = memo(() => {
       }
     );
 
+    const lastTransactionEntries = getLastTransactionData(
+      transactionsParse,
+      "positive"
+    );
+    const lastTransactionExpense = getLastTransactionData(
+      transactionsParse,
+      "negative"
+    );
+    const totalInterval = `01 a ${lastTransactionExpense}`;
+
     const total = entiresTotal - expenseTotal;
 
     setHighlightData({
@@ -94,18 +126,21 @@ export const Dashboard: React.FC = memo(() => {
           style: "currency",
           currency: "BRL",
         }),
+        lastTransaction: `Última entrada dia ${lastTransactionEntries}`,
       },
       expense: {
         amount: expenseTotal.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL",
         }),
+        lastTransaction: `Última saída dia ${lastTransactionExpense}`,
       },
       total: {
         amount: total.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL",
         }),
+        lastTransaction: totalInterval,
       },
     });
 
@@ -151,19 +186,19 @@ export const Dashboard: React.FC = memo(() => {
               type="up"
               title="Entradas"
               amount={highlightData?.entries?.amount}
-              lastTransaction="Última entrada dia 13 de abril"
+              lastTransaction={highlightData?.entries?.lastTransaction}
             />
             <HighlightCard
               type="down"
               title="Saídas"
               amount={highlightData?.expense?.amount}
-              lastTransaction="Última entrada dia 13 de abril"
+              lastTransaction={highlightData?.expense?.lastTransaction}
             />
             <HighlightCard
               type="total"
               title="Total"
               amount={highlightData?.total?.amount}
-              lastTransaction="Última entrada dia 13 de abril"
+              lastTransaction={highlightData?.total?.lastTransaction}
             />
           </HighlightCards>
 
