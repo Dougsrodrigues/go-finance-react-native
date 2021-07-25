@@ -1,12 +1,26 @@
 import React, { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useLayoutEffect } from "react";
 import { HistoryCard } from "../../components/HistoryCard";
 import { categories } from "../../utils/categories";
 import { VictoryPie } from "victory-native";
-import { Container, Header, Title, Content, ChartContainer } from "./styles";
+import {
+  Container,
+  Header,
+  Title,
+  Content,
+  ChartContainer,
+  MonthSelect,
+  MonthSelectButton,
+  Month,
+  MonthSelectIcon,
+} from "./styles";
 import { RFValue } from "react-native-responsive-fontsize";
 import { useTheme } from "styled-components";
+import { addMonths, format } from "date-fns";
+import { subMonths } from "date-fns/esm";
+import { ptBR } from "date-fns/locale";
 
 interface TransactionData {
   type: "positive" | "negative";
@@ -27,10 +41,26 @@ interface CategoryData {
 
 export const Resume: React.FC = () => {
   const theme = useTheme();
+  const bottomTabBarHeight = useBottomTabBarHeight();
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [totalByCategories, setTotalByCategories] = useState<CategoryData[]>(
     []
   );
+
   const dataKey = "@gofinance:transactions";
+
+  const handleDateChange = (actions: "next" | "prev") => {
+    if (actions === "next") {
+      const newDate = addMonths(selectedDate, 1);
+
+      setSelectedDate(newDate);
+    } else {
+      const newDate = subMonths(selectedDate, 1);
+
+      setSelectedDate(newDate);
+    }
+  };
 
   async function loadData() {
     const response = await AsyncStorage.getItem(dataKey);
@@ -38,7 +68,10 @@ export const Resume: React.FC = () => {
     const responseFormatted = response ? JSON.parse(response) : [];
 
     const expenses = responseFormatted.filter(
-      (expense: TransactionData) => expense.type === "negative"
+      (expense: TransactionData) =>
+        expense.type === "negative" &&
+        new Date(expense.date).getMonth() === selectedDate.getMonth() &&
+        new Date(expense.date).getFullYear() === selectedDate.getFullYear()
     );
 
     const expensesTotal = expenses.reduce(
@@ -47,8 +80,6 @@ export const Resume: React.FC = () => {
       },
       0
     );
-
-    console.log(expensesTotal);
 
     const totalByCategory: CategoryData[] = [];
 
@@ -85,7 +116,7 @@ export const Resume: React.FC = () => {
 
   useLayoutEffect(() => {
     loadData();
-  }, []);
+  }, [selectedDate]);
 
   return (
     <Container>
@@ -93,7 +124,25 @@ export const Resume: React.FC = () => {
         <Title>Resumo por categoria</Title>
       </Header>
 
-      <Content>
+      <Content
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingBottom: bottomTabBarHeight,
+        }}
+      >
+        <MonthSelect>
+          <MonthSelectButton onPress={() => handleDateChange("prev")}>
+            <MonthSelectIcon name="chevron-left" />
+          </MonthSelectButton>
+
+          <Month>{format(selectedDate, "MMMM, yyyy", { locale: ptBR })}</Month>
+
+          <MonthSelectButton onPress={() => handleDateChange("next")}>
+            <MonthSelectIcon name="chevron-right" />
+          </MonthSelectButton>
+        </MonthSelect>
+
         <ChartContainer>
           <VictoryPie
             data={totalByCategories}
