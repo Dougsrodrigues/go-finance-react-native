@@ -26,7 +26,9 @@ import {
   LogoutButton,
   LoadContainer,
 } from "./styles";
+
 import { useTheme } from "styled-components";
+import { useAuth } from "../../hooks/auth";
 
 export interface DataListProps extends TransactionCardProps {
   id: string;
@@ -45,7 +47,8 @@ interface HighlightData {
 
 export const Dashboard: React.FC = memo(() => {
   const theme = useTheme();
-  const dataKey = "@gofinance:transactions";
+  const { signOut, user } = useAuth();
+  const dataKey = `@gofinance:transactions_user:${user.id}`;
   const [isLoading, setIsLoading] = useState(true);
   const [transactions, setTransactions] = useState<DataListProps[]>([]);
   const [highlightData, setHighlightData] = useState<HighlightData>(
@@ -56,14 +59,18 @@ export const Dashboard: React.FC = memo(() => {
     collection: DataListProps[],
     type: "positive" | "negative"
   ) => {
+    const collectionFiltered = collection.filter(
+      (transaction: DataListProps) => transaction.type === type
+    );
+
+    if (collectionFiltered.length === 0) return 0;
+
     const lastTransaction = new Date(
       Math.max.apply(
         Math,
-        collection
-          .filter((transaction: DataListProps) => transaction.type === type)
-          .map((transaction: DataListProps) =>
-            new Date(transaction.date).getTime()
-          )
+        collectionFiltered.map((transaction: DataListProps) =>
+          new Date(transaction.date).getTime()
+        )
       )
     );
 
@@ -116,7 +123,10 @@ export const Dashboard: React.FC = memo(() => {
       transactionsParse,
       "negative"
     );
-    const totalInterval = `01 a ${lastTransactionExpense}`;
+    const totalInterval =
+      lastTransactionExpense === 0
+        ? "Não há transações"
+        : `01 a ${lastTransactionExpense}`;
 
     const total = entiresTotal - expenseTotal;
 
@@ -126,14 +136,20 @@ export const Dashboard: React.FC = memo(() => {
           style: "currency",
           currency: "BRL",
         }),
-        lastTransaction: `Última entrada dia ${lastTransactionEntries}`,
+        lastTransaction:
+          lastTransactionEntries === 0
+            ? "Não há transações"
+            : `Última entrada dia ${lastTransactionEntries}`,
       },
       expense: {
         amount: expenseTotal.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL",
         }),
-        lastTransaction: `Última saída dia ${lastTransactionExpense}`,
+        lastTransaction:
+          lastTransactionExpense === 0
+            ? "Não há transações"
+            : `Última saída dia ${lastTransactionExpense}`,
       },
       total: {
         amount: total.toLocaleString("pt-BR", {
@@ -167,15 +183,15 @@ export const Dashboard: React.FC = memo(() => {
               <UserInfo>
                 <Photo
                   source={{
-                    uri: "https://avatars.githubusercontent.com/u/41873554?v=4",
+                    uri: user.photo,
                   }}
                 />
                 <User>
                   <UserGreeting>Olá, </UserGreeting>
-                  <UserName>Douglas</UserName>
+                  <UserName>{user.name}</UserName>
                 </User>
               </UserInfo>
-              <LogoutButton onPress={() => {}}>
+              <LogoutButton onPress={() => signOut()}>
                 <Icon name="power" />
               </LogoutButton>
             </UserWrapper>

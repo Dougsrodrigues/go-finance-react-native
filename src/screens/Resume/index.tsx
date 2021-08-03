@@ -24,6 +24,7 @@ import { ptBR } from "date-fns/locale";
 import { ActivityIndicator } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLayoutEffect } from "react";
+import { useAuth } from "../../hooks/auth";
 
 interface TransactionData {
   type: "positive" | "negative";
@@ -44,6 +45,7 @@ interface CategoryData {
 
 export const Resume: React.FC = () => {
   const theme = useTheme();
+  const { user } = useAuth();
   const bottomTabBarHeight = useBottomTabBarHeight();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +54,7 @@ export const Resume: React.FC = () => {
     []
   );
 
-  const dataKey = "@gofinance:transactions";
+  const dataKey = `@gofinance:transactions_user:${user.id}`;
 
   const handleDateChange = (actions: "next" | "prev") => {
     if (actions === "next") {
