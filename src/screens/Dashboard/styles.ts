@@ -7,6 +7,7 @@ import {
 } from "react-native-iphone-x-helper";
 import { BorderlessButton } from "react-native-gesture-handler";
 import { FlatList } from "react-native";
+import { DataListProps } from "./index";
 
 export const Container = styled.View`
   flex: 1;
@@ -88,7 +89,9 @@ export const Title = styled.Text`
   margin-bottom: 16px;
 `;
 
-export const TransactionsList = styled(FlatList).attrs({
+export const TransactionsList = styled(
+  FlatList as new () => FlatList<DataListProps>
+).attrs({
   showsVerticalScrollIndicator: false,
   contentContainerStyle: { paddingBottom: getBottomSpace() },
 })``;
